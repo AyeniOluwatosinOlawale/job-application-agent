@@ -333,6 +333,20 @@ class AgentOrchestrator:
             return {"status": "already_applied", "job_id": job_id}
 
         app = Application(job_id=job_id)
+        app.cover_letter = cover_letter
+
+        from models.job import JobSource
+
+        # Non-Reed sources redirect to external ATS — queue for manual apply with cover letter
+        easy_apply_sources = {JobSource.REED}
+        if job.source not in easy_apply_sources and not job.easy_apply:
+            app.status = ApplicationStatus.SKIPPED
+            app.notes = "manual_apply"
+            await self.db.save_application(app)
+            if stats:
+                stats["skipped"] += 1
+            logger.info(f"Queued for manual apply: {job.title} at {job.company} ({job.url})")
+            return {"status": "manual_apply", "job_id": job_id, "title": job.title, "company": job.company, "url": job.url}
 
         searcher = self.searchers.get(job.source.value)
         if not searcher:
@@ -343,7 +357,6 @@ class AgentOrchestrator:
 
         try:
             success = await searcher.apply(job, cover_letter, self.resume_path)
-            app.cover_letter = cover_letter
 
             if success:
                 app.status = ApplicationStatus.APPLIED
@@ -353,18 +366,10 @@ class AgentOrchestrator:
                     stats["applied"] += 1
                 logger.info(f"Applied: {job.title} at {job.company}")
             else:
-                from models.job import JobSource
-                if job.source == JobSource.LINKEDIN:
-                    # LinkedIn apply failed — either not logged in or no apply button (recruiter-only posting)
-                    app.status = ApplicationStatus.SKIPPED
-                    app.notes = "LinkedIn: no apply button found (may be recruiter-only or 'I'm interested' posting)"
-                    if stats:
-                        stats["skipped"] += 1
-                else:
-                    app.status = ApplicationStatus.FAILED
-                    app.error_message = "apply() returned False"
-                    if stats:
-                        stats["failed"] += 1
+                app.status = ApplicationStatus.SKIPPED
+                app.notes = "no apply button found"
+                if stats:
+                    stats["skipped"] += 1
 
         except Exception as e:
             app.status = ApplicationStatus.FAILED

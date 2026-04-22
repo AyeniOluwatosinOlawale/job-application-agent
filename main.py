@@ -105,10 +105,13 @@ async def run_agent_cycle() -> None:
 
     # Send daily email summary
     summary = await db.get_daily_summary()
-    if summary:
-        sent = notifier.send_daily_summary(summary)
+    manual_jobs = await db.get_manual_apply_jobs()
+
+    if summary or manual_jobs:
+        sent = notifier.send_daily_summary(summary, manual_jobs)
         if sent:
-            await db.mark_email_sent([row["job_id"] for row in summary])
+            all_ids = [row["job_id"] for row in summary] + [row["job_id"] for row in manual_jobs]
+            await db.mark_email_sent(all_ids)
     else:
         logger.info("No new applications today — no email sent")
 

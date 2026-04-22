@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     # Search config
     target_role: str = Field("AI Engineer", alias="TARGET_ROLE")
     target_locations_raw: str = Field('["Remote"]', alias="TARGET_LOCATIONS")
-    min_salary: Optional[int] = Field(None, alias="MIN_SALARY")
+    min_salary: Optional[int] = Field(None, alias="MIN_SALARY", validate_default=False)
     experience_years: int = Field(3, alias="EXPERIENCE_YEARS")
 
     # Schedule

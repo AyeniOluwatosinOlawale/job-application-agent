@@ -182,12 +182,34 @@ class Database:
             db.row_factory = aiosqlite.Row
             async with db.execute(
                 """SELECT j.id as job_id, j.title, j.company, j.location,
-                          j.url, j.source, a.status, a.applied_at, a.email_sent
+                          j.url, j.source, a.status, a.applied_at, a.email_sent,
+                          a.cover_letter, a.notes
                    FROM applications a
                    JOIN jobs j ON j.id = a.job_id
                    WHERE DATE(a.applied_at) = ?
-                     AND a.email_sent = 0""",
+                     AND a.email_sent = 0
+                     AND a.status IN ('applied', 'failed')""",
                 (today,),
+            ) as cur:
+                rows = await cur.fetchall()
+                return [dict(r) for r in rows]
+
+    async def get_manual_apply_jobs(self) -> list[dict]:
+        """Return today's jobs queued for manual application (with cover letters)."""
+        today = date.today().isoformat()
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                """SELECT j.id as job_id, j.title, j.company, j.location,
+                          j.url, j.source, a.cover_letter, a.email_sent
+                   FROM applications a
+                   JOIN jobs j ON j.id = a.job_id
+                   WHERE a.status = 'skipped'
+                     AND a.notes = 'manual_apply'
+                     AND a.email_sent = 0
+                     AND DATE(a.applied_at) IS NULL
+                   ORDER BY j.discovered_at DESC
+                   LIMIT 20""",
             ) as cur:
                 rows = await cur.fetchall()
                 return [dict(r) for r in rows]
