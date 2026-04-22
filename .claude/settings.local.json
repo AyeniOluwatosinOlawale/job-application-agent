@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/bin/python -c \"import searchers.linkedin, agent.orchestrator, storage.database; print\\('All OK'\\)\")"
+    ]
+  }
+}

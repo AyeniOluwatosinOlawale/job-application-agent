@@ -1,0 +1,12 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.db
+*.pdf
+logs/*.log
+.linkedin_session.json
+.linkedin_profile/
+resume_generated.pdf
