@@ -20,7 +20,7 @@ class TotaljobsSearcher(BaseSearcher):
     async def search(self, query: str, location: str = "United Kingdom") -> list[Job]:
         url = TOTALJOBS_URL.format(query=query.replace(" ", "+"))
         try:
-            await self.page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            await self.page.goto(url, wait_until="domcontentloaded", timeout=60000)
             await self.human_delay(3, 5)
         except Exception as e:
             logger.error(f"Totaljobs: navigation error: {e}")
