@@ -83,7 +83,7 @@ class BrowserUseApplier:
 
         try:
             from browser_use import Agent
-            from browser_use.browser.browser import Browser, BrowserConfig
+            from browser_use.browser.profile import BrowserProfile
             from langchain_openai import ChatOpenAI
         except ImportError as e:
             logger.error(f"browser-use not installed: {e}")
@@ -94,11 +94,11 @@ class BrowserUseApplier:
         try:
             llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
-            # Stealth browser config — mimics a real user session
-            config = BrowserConfig(
+            # Stealth browser profile — mimics a real user session
+            profile = BrowserProfile(
                 headless=True,
                 user_data_dir=LINKEDIN_PROFILE_DIR,
-                extra_chromium_args=[
+                args=[
                     "--disable-blink-features=AutomationControlled",
                     "--disable-infobars",
                     "--no-sandbox",
@@ -107,11 +107,10 @@ class BrowserUseApplier:
                     "--disable-extensions",
                 ],
             )
-            browser = Browser(config=config)
             agent = Agent(
                 task=task,
                 llm=llm,
-                browser=browser,
+                browser_profile=profile,
                 max_steps=self.LINKEDIN_MAX_STEPS,
             )
 
@@ -119,7 +118,6 @@ class BrowserUseApplier:
             await asyncio.sleep(random.uniform(3, 8))
 
             result = await asyncio.wait_for(agent.run(), timeout=180)
-            await browser.close()
 
             success = self._parse_result(result)
             if success:
