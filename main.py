@@ -14,6 +14,7 @@ from searchers.reed import ReedSearcher
 from searchers.adzuna import AdzunaSearcher
 from searchers.cv_library import CvLibrarySearcher
 from searchers.totaljobs import TotaljobsSearcher
+from searchers.linkedin import LinkedInSearcher
 from notifier.email_sender import EmailSender
 
 # ── Logging setup ────────────────────────────────────────────────────────────
@@ -75,8 +76,8 @@ async def run_agent_cycle() -> None:
         if not cv_ok:
             logger.warning("Proceeding without fresh CV export")
 
-        # Initialise searchers (no LinkedIn — unreliable apply buttons)
         searcher_classes = {
+            "linkedin": LinkedInSearcher,
             "remotive": RemotiveSearcher,
             "arbeitnow": ArbeitnowSearcher,
             "reed": ReedSearcher,

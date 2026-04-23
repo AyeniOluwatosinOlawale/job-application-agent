@@ -26,7 +26,7 @@ Decision criteria:
 - Generate authentic, specific cover letters — NEVER use placeholder text like [Your Name] or [Your Address]. Always use the real applicant details above.
 
 Workflow — call tools in this order:
-1. Call search_jobs for each platform: remotive, arbeitnow, reed, adzuna, cv_library, totaljobs
+1. Call search_jobs for each platform: linkedin, remotive, arbeitnow, reed, adzuna, cv_library, totaljobs
 2. For each new job returned, call evaluate_job
 3. For approved jobs, call generate_cover_letter
 4. Call apply_to_job with the cover letter
@@ -45,7 +45,7 @@ AGENT_TOOLS = [
                 "properties": {
                     "platform": {
                         "type": "string",
-                        "enum": ["remotive", "arbeitnow", "reed", "adzuna", "cv_library", "totaljobs"],
+                        "enum": ["linkedin", "remotive", "arbeitnow", "reed", "adzuna", "cv_library", "totaljobs"],
                         "description": "The job platform to search",
                     },
                     "query": {
@@ -135,6 +135,8 @@ class AgentOrchestrator:
             experience_years=settings.experience_years,
             target_role=settings.target_role,
             resume_path=resume_path,
+            linkedin_email=settings.linkedin_email or "",
+            linkedin_password=settings.linkedin_password or "",
         )
         try:
             first_searcher = next(iter(searchers.values()))
@@ -359,6 +361,40 @@ class AgentOrchestrator:
         app.cover_letter = cover_letter
 
         from models.job import JobSource
+
+        # LinkedIn jobs → browser-use Easy Apply with anti-detection
+        if job.source == JobSource.LINKEDIN:
+            if self.browser_use_applier is not None:
+                success, notes = await self.browser_use_applier.apply_linkedin(
+                    job_url=job.url,
+                    job_title=job.title,
+                    company=job.company,
+                    cover_letter=cover_letter,
+                )
+                if success:
+                    app.status = ApplicationStatus.APPLIED
+                    app.applied_at = datetime.utcnow()
+                    app.notes = notes
+                    self._applied_companies.add(job.company.lower())
+                    await self.db.save_application(app)
+                    if stats:
+                        stats["applied"] += 1
+                    logger.info(f"LinkedIn AI-applied: {job.title} at {job.company}")
+                    return {"status": "applied", "job_id": job_id, "title": job.title, "company": job.company}
+                else:
+                    app.status = ApplicationStatus.SKIPPED
+                    app.notes = f"manual_apply ({notes})"
+                    await self.db.save_application(app)
+                    if stats:
+                        stats["skipped"] += 1
+                    return {"status": "manual_apply", "job_id": job_id, "title": job.title, "company": job.company, "url": job.url}
+            else:
+                app.status = ApplicationStatus.SKIPPED
+                app.notes = "manual_apply"
+                await self.db.save_application(app)
+                if stats:
+                    stats["skipped"] += 1
+                return {"status": "manual_apply", "job_id": job_id, "title": job.title, "company": job.company, "url": job.url}
 
         # Non-Reed sources: try AI-powered form fill, fall back to manual queue
         easy_apply_sources = {JobSource.REED}
