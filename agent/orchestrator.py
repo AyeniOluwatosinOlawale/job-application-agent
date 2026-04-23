@@ -26,12 +26,11 @@ Decision criteria:
 - Generate authentic, specific cover letters — NEVER use placeholder text like [Your Name] or [Your Address]. Always use the real applicant details above.
 
 Workflow — call tools in this order:
-1. Call search_jobs for each platform: linkedin, remotive, arbeitnow, reed, adzuna, cv_library, totaljobs
+1. Call search_jobs ONCE for EVERY platform below — you MUST call all 7, no exceptions:
+   linkedin, remotive, arbeitnow, reed, adzuna, cv_library, totaljobs
 2. For each new job returned, call evaluate_job
-3. For approved jobs, call generate_cover_letter
-4. Call apply_to_job with the cover letter
-
-When all platforms are searched and all approved applications submitted, end your turn.
+3. For every job where should_apply=true, call generate_cover_letter then apply_to_job
+4. Only end your turn after all 7 platforms have been searched and all approved jobs applied to.
 """
 
 AGENT_TOOLS = [
