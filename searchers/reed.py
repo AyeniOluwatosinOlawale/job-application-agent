@@ -123,7 +123,7 @@ class ReedSearcher(BaseSearcher):
     async def apply(self, job: Job, cover_letter: str, resume_path: str) -> bool:
         """Navigate to Reed job page and apply via Easy Apply or external link."""
         try:
-            await self.page.goto(job.url, wait_until="domcontentloaded", timeout=30000)
+            await self.page.goto(job.url, wait_until="domcontentloaded", timeout=60000)
             await self.human_delay(2, 4)
             await self._dismiss_consent()
 
