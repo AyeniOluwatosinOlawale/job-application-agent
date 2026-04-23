@@ -1,6 +1,5 @@
 import asyncio
 from dataclasses import dataclass
-from typing import Optional
 from loguru import logger
 
 
@@ -18,23 +17,14 @@ class ApplicantProfile:
 
 
 class BrowserUseApplier:
-    """AI-powered form filler using browser-use v0.1.48."""
+    """AI-powered form filler using browser-use (0.12.x API)."""
 
     TIMEOUT_SECONDS = 120
     MAX_STEPS = 15
 
     def __init__(self, profile: ApplicantProfile, browser=None):
         self.profile = profile
-        self.browser = browser
-        self._agent_cls = None
-        self._llm_cls = None
-
-    def _load_deps(self):
-        if self._agent_cls is None:
-            from browser_use import Agent
-            from langchain_openai import ChatOpenAI
-            self._agent_cls = Agent
-            self._llm_cls = ChatOpenAI
+        self.browser = browser  # kept for future reuse; 0.12.x manages its own browser
 
     async def apply(
         self,
@@ -48,7 +38,8 @@ class BrowserUseApplier:
         Returns (success, notes) — always falls back gracefully on failure.
         """
         try:
-            self._load_deps()
+            from browser_use import Agent
+            from langchain_openai import ChatOpenAI
         except ImportError as e:
             logger.error(f"browser-use not installed: {e}")
             return False, "browser_use_not_installed"
@@ -56,13 +47,8 @@ class BrowserUseApplier:
         task = self._build_task(job_url, job_title, company, cover_letter)
 
         try:
-            llm = self._llm_cls(model="gpt-4o-mini", temperature=0)
-
-            kwargs = dict(task=task, llm=llm, max_steps=self.MAX_STEPS)
-            if self.browser is not None:
-                kwargs["browser"] = self.browser
-
-            agent = self._agent_cls(**kwargs)
+            llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+            agent = Agent(task=task, llm=llm, max_steps=self.MAX_STEPS)
 
             result = await asyncio.wait_for(agent.run(), timeout=self.TIMEOUT_SECONDS)
 
@@ -117,8 +103,13 @@ INSTRUCTIONS:
     @staticmethod
     def _parse_result(result) -> bool:
         try:
-            if hasattr(result, "is_done") and result.is_done():
+            # browser-use 0.12.x: AgentHistoryList with is_successful() or final_result()
+            if hasattr(result, "is_successful") and result.is_successful():
                 return True
+            if hasattr(result, "final_result"):
+                final = str(result.final_result() or "").lower()
+                return any(w in final for w in ["submitted", "thank you", "success", "applied", "received"])
+            # fallback: check last action text
             if hasattr(result, "history") and result.history:
                 last_str = str(result.history[-1]).lower()
                 return any(w in last_str for w in ["submitted", "thank you", "success", "applied", "received"])
