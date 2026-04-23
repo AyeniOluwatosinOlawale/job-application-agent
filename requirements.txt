@@ -9,4 +9,4 @@ httpx>=0.28.1
 tenacity>=8.5.0
 loguru>=0.7.3
 python-dateutil>=2.9.0
-browser-use==0.1.48
+browser-use>=0.1.48
