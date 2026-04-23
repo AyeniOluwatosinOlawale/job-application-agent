@@ -5,6 +5,7 @@ from config.settings import settings
 from storage.database import Database
 from models.job import Job, Application, ApplicationStatus
 from loguru import logger
+from applier.browser_use_applier import BrowserUseApplier, ApplicantProfile
 
 SYSTEM_PROMPT = """You are an autonomous job application agent working on behalf of {applicant_name}.
 
@@ -123,6 +124,28 @@ class AgentOrchestrator:
         self.searchers = searchers
         self.resume_path = resume_path
         self._applied_companies: set[str] = set()
+
+        profile = ApplicantProfile(
+            name=settings.applicant_name,
+            email=settings.gmail_address,
+            phone=settings.applicant_phone,
+            linkedin_url=settings.linkedin_profile_url,
+            github_url=settings.github_url,
+            cv_url=settings.cv_url,
+            experience_years=settings.experience_years,
+            target_role=settings.target_role,
+            resume_path=resume_path,
+        )
+        try:
+            first_searcher = next(iter(searchers.values()))
+            self.browser_use_applier = BrowserUseApplier(
+                profile=profile,
+                browser=first_searcher.browser,
+            )
+            logger.info("BrowserUseApplier initialized")
+        except Exception as e:
+            logger.warning(f"BrowserUseApplier init failed — manual fallback active: {e}")
+            self.browser_use_applier = None
 
     async def run(self) -> dict:
         messages = [
@@ -337,16 +360,43 @@ class AgentOrchestrator:
 
         from models.job import JobSource
 
-        # Non-Reed sources redirect to external ATS — queue for manual apply with cover letter
+        # Non-Reed sources: try AI-powered form fill, fall back to manual queue
         easy_apply_sources = {JobSource.REED}
         if job.source not in easy_apply_sources and not job.easy_apply:
-            app.status = ApplicationStatus.SKIPPED
-            app.notes = "manual_apply"
-            await self.db.save_application(app)
-            if stats:
-                stats["skipped"] += 1
-            logger.info(f"Queued for manual apply: {job.title} at {job.company} ({job.url})")
-            return {"status": "manual_apply", "job_id": job_id, "title": job.title, "company": job.company, "url": job.url}
+            if self.browser_use_applier is not None:
+                target_url = job.external_apply_url or job.url
+                success, notes = await self.browser_use_applier.apply(
+                    job_url=target_url,
+                    job_title=job.title,
+                    company=job.company,
+                    cover_letter=cover_letter,
+                )
+                if success:
+                    app.status = ApplicationStatus.APPLIED
+                    app.applied_at = datetime.utcnow()
+                    app.notes = notes
+                    self._applied_companies.add(job.company.lower())
+                    await self.db.save_application(app)
+                    if stats:
+                        stats["applied"] += 1
+                    logger.info(f"AI-applied: {job.title} at {job.company}")
+                    return {"status": "applied", "job_id": job_id, "title": job.title, "company": job.company}
+                else:
+                    logger.warning(f"browser-use failed ({notes}) — manual queue: {job.title}")
+                    app.status = ApplicationStatus.SKIPPED
+                    app.notes = f"manual_apply ({notes})"
+                    await self.db.save_application(app)
+                    if stats:
+                        stats["skipped"] += 1
+                    return {"status": "manual_apply", "job_id": job_id, "title": job.title, "company": job.company, "url": job.url}
+            else:
+                app.status = ApplicationStatus.SKIPPED
+                app.notes = "manual_apply"
+                await self.db.save_application(app)
+                if stats:
+                    stats["skipped"] += 1
+                logger.info(f"Queued for manual apply: {job.title} at {job.company} ({job.url})")
+                return {"status": "manual_apply", "job_id": job_id, "title": job.title, "company": job.company, "url": job.url}
 
         searcher = self.searchers.get(job.source.value)
         if not searcher:
