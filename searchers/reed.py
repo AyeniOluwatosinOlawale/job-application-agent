@@ -80,6 +80,8 @@ class ReedSearcher(BaseSearcher):
                     if not title or not href:
                         continue
 
+                    if not href.startswith("http"):
+                        href = "https://www.reed.co.uk" + href
                     clean_url = href.split("?")[0]
 
                     jobs.append(Job(
