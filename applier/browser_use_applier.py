@@ -152,25 +152,34 @@ APPLICANT DETAILS — use these exact values, never placeholders:
 - Years of Experience: {p.experience_years}
 - Target Role: {p.target_role}
 
-RESUME FILE PATH: {p.resume_path}
+RESUME / CV FILE PATH (upload this file wherever a CV or resume is requested):
+{p.resume_path}
 
-COVER LETTER (paste into any cover letter / additional information field):
+COVER LETTER (paste the full text below into ANY of these fields: "Cover Letter", "Cover Note",
+"Why do you want this role?", "Additional Information", "Message to Hiring Manager", or any
+free-text box that accepts a personal statement):
+---
 {cover_letter}
+---
 
 INSTRUCTIONS:
 1. Dismiss any cookie consent banners first.
 2. Find and click the Apply / Apply Now / Easy Apply button.
 3. If it opens a new tab, continue in that tab.
 4. Fill every required field using the applicant details above.
-5. Upload the resume PDF when a file upload field appears.
-6. For right-to-work in UK questions: answer Yes.
-7. For visa sponsorship required questions: answer No.
-8. For years of experience numeric fields: enter {p.experience_years}.
-9. For salary fields: leave blank or enter 0 if required.
-10. Click Next / Continue through all steps until the final Submit button.
-11. Click Submit and confirm the "Application submitted" or "Thank you" message.
-12. Stop immediately if you encounter a CAPTCHA — report failure.
-13. Stop immediately if a login wall appears that cannot be bypassed.
+5. CV UPLOAD — on every step, look for any file upload button labelled "CV", "Resume",
+   "Upload your CV", or similar. Click it and upload the file at: {p.resume_path}
+6. COVER LETTER — paste the cover letter text (between the --- markers above) into any
+   text area or rich-text field that asks for a cover letter, cover note, personal statement,
+   or additional information. Do this on every step where such a field appears.
+7. For right-to-work in UK questions: answer Yes.
+8. For visa sponsorship required questions: answer No.
+9. For years of experience numeric fields: enter {p.experience_years}.
+10. For salary / expected salary fields: leave blank or enter 0 if the field is required.
+11. Click Next / Continue through all steps until the final Submit button.
+12. Click Submit and confirm the "Application submitted" or "Thank you" message appears.
+13. Stop immediately if you encounter a CAPTCHA — report failure.
+14. Stop immediately if a login wall appears that cannot be bypassed — report failure.
 """
 
     def _build_linkedin_task(self, job_url: str, job_title: str, company: str, cover_letter: str) -> str:
@@ -198,20 +207,26 @@ APPLICANT DETAILS — use these exact values:
 - Years of Experience: {p.experience_years}
 - Current/Target Role: {p.target_role}
 
-RESUME FILE PATH: {p.resume_path}
+RESUME / CV FILE PATH (upload this file wherever a CV or resume is requested):
+{p.resume_path}
 
-COVER LETTER (paste into any cover letter field):
+COVER LETTER (paste the full text below into any cover letter, cover note, personal statement,
+or additional information field — on every step where such a field appears):
+---
 {cover_letter}
+---
 
 INSTRUCTIONS:
 {login_instruction}
 1. Navigate to {job_url}
-2. Find the "Easy Apply" button and click it (do NOT click "Apply" which goes to external site)
+2. Find the "Easy Apply" button and click it (do NOT click "Apply" which goes to an external site)
 3. If no Easy Apply button exists, stop and report "no_easy_apply"
-4. Work through each step of the modal form:
+4. Work through EVERY step of the modal form:
    - Fill phone number if asked: {p.phone}
-   - For resume: upload file from {p.resume_path}
-   - For cover letter / additional information: paste the cover letter above
+   - CV UPLOAD: on every step, look for a file upload button labelled "Resume" or "CV" and
+     upload the file at {p.resume_path}
+   - COVER LETTER: paste the cover letter text (between the --- markers above) into any
+     text area asking for a cover letter, cover note, or additional information
    - For Yes/No questions about right-to-work in UK: select Yes
    - For visa sponsorship questions: select No
    - For years of experience: enter {p.experience_years}
@@ -219,7 +234,7 @@ INSTRUCTIONS:
    - For "How did you hear about us": select LinkedIn or Other
 5. Click Next / Continue / Review to advance through all steps
 6. On the final Review screen, click Submit application
-7. Confirm the "Your application was sent" confirmation message
+7. Confirm the "Your application was sent" message appears
 8. Stop immediately if you see a CAPTCHA or phone verification — report failure
 9. Move naturally between fields with small pauses — do not rush
 """
